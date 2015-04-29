@@ -13,11 +13,6 @@ uint8_t my_MAC[3] = {0x4E, 0x03, 0xAD};
 uint8_t rx_packet[4];  //3 bytes MAC addr, 1 byte answer
 uint8_t tx_packet[4];  //3 bytes MAC addr, 1 byte answer
 
-struct{
-  uint8_t MAC_addr[3];
-  uint8_t answer;
-} packet;
-
 void setup(){
   /* Setup serial */
   Serial.begin(9600);
@@ -33,18 +28,17 @@ void setup(){
   SPI.setDataMode(SPI_MODE0);
 
   /* Setup nRF24L01 */
-  delay(1000);
-  
   init_rx(); 
   delay(1000);
-  
   read_all_registers();
 }
 
 uint8_t raw_packet[4];
 uint8_t prev_packet[4];
 uint8_t status;
-uint16_t idx = 0;
+
+uint16_t answers[10];
+uint8_t answers_idx = 0;
 
 void loop(){
   get_status(&status);
@@ -53,13 +47,16 @@ void loop(){
   if(status < 0x07){
     get_data(raw_packet);
     
-    /* If packet unique */
-    if(memcmp(prev_packet, raw_packet, PACKET_SIZE))
-      print_packet(raw_packet);
+    /* If packet not a repeat */
+    if(memcmp(prev_packet, raw_packet, PACKET_SIZE)){
+      //print_packet(raw_packet);
+      add_answer(answers, raw_packet);
+      print_answers(answers);
+    }
       
     memcpy(prev_packet, raw_packet, PACKET_SIZE);
   }
-  
+
   delay(50);
 }
 
@@ -68,7 +65,7 @@ void read_all_registers(){
   int tmp;
     
   Serial.print("Registers: \n");
-  for(int i = 0; i < 10; i++){
+  for(uint8_t i = 0; i < 10; i++){
     rf24_read(R_REGISTER | i, buffer, 1);
     Serial.print(i, HEX);
     Serial.print(",");
@@ -93,7 +90,7 @@ void get_data(uint8_t *raw_packet){
 
 void print_packet(uint8_t *packet){
   Serial.print("[MAC ADDR: ");
-  for(int i = 0; i < sizeof(packet) - 1; i++){
+  for(uint8_t i = 0; i < sizeof(packet) - 1; i++){
     Serial.print(packet[i], HEX);
     Serial.print(" ");
   }
@@ -104,7 +101,21 @@ void print_packet(uint8_t *packet){
   Serial.print("]\n");
 }
 
-void print_answers()
+void add_answer(uint16_t *answers, uint8_t *packet){
+  uint8_t pos = packet[3] - 98;
+  answers[pos] += 1;
+}
+
+void print_answers(uint16_t *answers){
+  Serial.print("[ANSWERS]\n");
+  for(uint8_t i = 0; i < 10; i++){
+    Serial.print(i + 1);
+    Serial.print(":\t");
+    Serial.print(answers[i]);
+    Serial.print("\n");
+  }
+  Serial.print("\n");
+}
 
 /* --- */
 
