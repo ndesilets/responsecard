@@ -33,7 +33,7 @@ void setup(){
 	/* Init packet array 
 	 * Allocating to heap is a bad idea w/ avr but fuck it yolo */
 	packet_array = new uint8_t *[MAX_SIZE];
-	for(int i = 0; i < MAX_SIZE; i++){
+	for(uint16_t i = 0; i < MAX_SIZE; i++){
 		packet_array[i] = new uint8_t[PACKET_SIZE];
 	}
 
@@ -85,7 +85,7 @@ void get_packet(uint8_t *packet){
 
 /* Check if packet is unique */
 uint8_t packet_unique(uint8_t **packet_array, uint8_t *packet){
-	for(int i = 0; i < packets_idx; i++){
+	for(uint16_t i = 0; i < packets_idx; i++){
 		if(!memcmp(packet_array[i], packet, PACKET_SIZE)){
 			return 0;
 		}
@@ -96,7 +96,7 @@ uint8_t packet_unique(uint8_t **packet_array, uint8_t *packet){
 
 /* Add packet to packet array */
 void add_packet(uint8_t **packet_array, uint8_t *packet){
-	for(int i = 0; i < 3; i++){
+	for(uint16_t i = 0; i < 3; i++){
 		packet_array[packets_idx][i] = packet[i];
 	}
 	
@@ -181,7 +181,7 @@ uint8_t rf24_read(uint8_t cmd, uint8_t* result, uint8_t length){
 	digitalWrite(CSN, LOW);  //Select device
   
 	status = SPI.transfer(cmd);
-	for(int i = 0; i < length; i++){
+	for(uint8_t i = 0; i < length; i++){
 		result[i] = SPI.transfer(0);
 	}
 
@@ -207,7 +207,7 @@ uint8_t rf24_write(uint8_t cmd, uint8_t* val, uint8_t length){
 	digitalWrite(CSN, LOW);  //Select device
 
 	status = SPI.transfer(cmd);
-	for(int i = 0; i < length; i++){
+	for(uint8_t i = 0; i < length; i++){
 		SPI.transfer(val[i]);
 	}
 
