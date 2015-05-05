@@ -7,11 +7,9 @@
 #define PACKET_SIZE 4
 #define MAX_SIZE 512
 
-//spong channel 43 id hutchiss
-
-uint8_t **packet_array;
-uint16_t packets_idx = 0;
-uint8_t raw_packet[4];
+uint8_t **packet_array;				//Rows: MAX_SIZE, Cols: PACKET_SIZE
+uint16_t packets_idx = 0;			
+uint8_t raw_packet[PACKET_SIZE];
 
 uint16_t answers[10];
 uint8_t answers_idx = 0;
@@ -32,10 +30,11 @@ void setup(){
 	SPI.setClockDivider(SPI_CLOCK_DIV2);
 	SPI.setDataMode(SPI_MODE0);
 	
-	/* Init packet array */
+	/* Init packet array 
+	 * Allocating to heap is a bad idea w/ avr but fuck it yolo */
 	packet_array = new uint8_t *[MAX_SIZE];
 	for(int i = 0; i < MAX_SIZE; i++){
-		packet_array[i] = new uint8_t[4];
+		packet_array[i] = new uint8_t[PACKET_SIZE];
 	}
 
 	/* Setup nRF24L01 */
@@ -45,6 +44,7 @@ void setup(){
 }
 
 void loop(){
+	/* Get status of rx pipe */
 	get_rx_status(&rx_status);
   
 	/* If RX pipe contains data */
@@ -55,6 +55,7 @@ void loop(){
 		
 		/* Check if raw packet is unique */
 		if(packet_unique(packet_array, raw_packet)){
+			/* Add packet to array + add answer */
 			Serial.println();
 			print_packet(raw_packet);
 			add_packet(packet_array, raw_packet);
@@ -66,27 +67,26 @@ void loop(){
 		} 
 	}	
 	
+	/* Wait 10ms because reasons */
 	delay(10);
 }
 
+/* Get status of rx pipe */
 void get_rx_status(uint8_t *rx_status){
 	*rx_status = rf24_read(0, 0);
 	*rx_status &= 0x0C;   //Mask RX_P_NO bits
 }
 
+/* Get packet from rx pipe */
 void get_packet(uint8_t *packet){
 	rf24_read(R_RX_PAYLOAD, packet, PACKET_SIZE);
 	rf24_write(FLUSH_RX);
 }
 
+/* Check if packet is unique */
 uint8_t packet_unique(uint8_t **packet_array, uint8_t *packet){
 	for(int i = 0; i < packets_idx; i++){
-		/*Serial.print("CMP1: ");
-		print_packet(packet_array[i]);
-		Serial.print("\tCMP2: ");
-		print_packet(packet);
-		Serial.println();*/
-		if(!memcmp(packet_array[i], packet, 4)){
+		if(!memcmp(packet_array[i], packet, PACKET_SIZE)){
 			return 0;
 		}
 	}
@@ -94,6 +94,7 @@ uint8_t packet_unique(uint8_t **packet_array, uint8_t *packet){
 	return 1;
 }
 
+/* Add packet to packet array */
 void add_packet(uint8_t **packet_array, uint8_t *packet){
 	for(int i = 0; i < 3; i++){
 		packet_array[packets_idx][i] = packet[i];
@@ -104,6 +105,7 @@ void add_packet(uint8_t **packet_array, uint8_t *packet){
 	packets_idx++;
 }
 
+/* Print packet details */
 void print_packet(uint8_t *packet){
 	Serial.print("[MAC ADDR: ");
 	for(uint8_t i = 0; i < PACKET_SIZE - 1; i++){
@@ -113,15 +115,17 @@ void print_packet(uint8_t *packet){
   
 	Serial.print("] ");
 	Serial.print("[ANSWER: ");
-	Serial.print((packet[3] - 97));
+	Serial.print((packet[3] - 97)); //Subtract by 'A'
 	Serial.print("]\n");
 }
 
+/* Add answer to packet array */
 void add_answer(uint16_t *answers, uint8_t *packet){
 	uint8_t idx = packet[PACKET_SIZE - 1] - 98;
 	answers[idx]++;
 }
 
+/* Print list of all answers w/ frequency */
 void print_answers(uint16_t *answers){
 	Serial.print("[ANSWERS]\n");
 	for(uint8_t i = 0; i < 10; i++){
@@ -135,6 +139,7 @@ void print_answers(uint16_t *answers){
 
 /* --- */
 
+/* Read status of R_REGISTERS */
 void read_registers(){
  	uint8_t buffer[10];
  	int tmp;
@@ -168,7 +173,7 @@ void init_rx(){
 	digitalWrite(CE, HIGH); //Deselect device
 }
 
-/* --- Poop --- */
+/* --- nRF24L01 SPI functions --- */
 
 uint8_t rf24_read(uint8_t cmd, uint8_t* result, uint8_t length){
 	uint8_t status;
