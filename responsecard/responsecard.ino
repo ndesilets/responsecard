@@ -129,10 +129,10 @@ void add_answer(uint16_t *answers, uint8_t *packet){
 void print_answers(uint16_t *answers){
 	Serial.print("[ANSWERS]\n");
 	for(uint8_t i = 0; i < 10; i++){
-    	Serial.print(i + 1);
-    	Serial.print(":\t");
-    	Serial.print(answers[i]);
-    	Serial.print("\n");
+    		Serial.print(i + 1);
+    		Serial.print(":\t");
+    		Serial.print(answers[i]);
+    		Serial.print("\n");
   	}
   	Serial.print("\n");
 }
