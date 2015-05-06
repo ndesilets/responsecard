@@ -7,8 +7,8 @@
 #define PACKET_SIZE 4
 #define MAX_SIZE 512
 
-uint8_t **packet_array;				//Rows: MAX_SIZE, Cols: PACKET_SIZE
-uint16_t packets_idx = 0;			
+uint8_t **packet_array;			//Rows: MAX_SIZE, Cols: PACKET_SIZE
+uint16_t packets_idx = 0;
 uint8_t raw_packet[PACKET_SIZE];
 
 uint16_t answers[10];
@@ -18,7 +18,7 @@ uint8_t rx_status;
 
 void setup(){
 	/* Setup serial */
-	Serial.begin(9600);
+	Serial.begin(9600);		//Baud rate does not matter w/ Teensy 3.1
   
 	/* Set pins */
 	pinMode(CE, OUTPUT);
@@ -31,7 +31,7 @@ void setup(){
 	SPI.setDataMode(SPI_MODE0);
 	
 	/* Init packet array 
-	 * Allocating to heap is a bad idea w/ avr but fuck it yolo */
+	 * Dynamic allocation is not a good idea but fuck it yolo */
 	packet_array = new uint8_t *[MAX_SIZE];
 	for(uint16_t i = 0; i < MAX_SIZE; i++){
 		packet_array[i] = new uint8_t[PACKET_SIZE];
@@ -51,23 +51,23 @@ void loop(){
 	if(rx_status < 0x07){
 		/* Get raw packet data */
 		get_packet(raw_packet);
-		//print_packet(raw_packet);
 		
 		/* Check if raw packet is unique */
 		if(packet_unique(packet_array, raw_packet)){
-			/* Add packet to array + add answer */
+			/* Display raw packet info + packets_idx */
 			Serial.println();
 			print_packet(raw_packet);
-			add_packet(packet_array, raw_packet);
-			add_answer(answers, raw_packet);
-			print_answers(answers);
 			Serial.print("PCK IDX: ");
 			Serial.print(packets_idx);
 			Serial.println();
+			/* Add packet to array + add answer */
+			add_packet(packet_array, raw_packet);
+			add_answer(answers, raw_packet);
+			print_answers(answers);
 		} 
 	}	
 	
-	/* Wait 10ms because reasons */
+	/* This delay can probably be removed */
 	delay(10);
 }
 
@@ -83,7 +83,7 @@ void get_packet(uint8_t *packet){
 	rf24_write(FLUSH_RX);
 }
 
-/* Check if packet is unique */
+/* Check if packet is unique, return 1 if true, 0 if false */
 uint8_t packet_unique(uint8_t **packet_array, uint8_t *packet){
 	for(uint16_t i = 0; i < packets_idx; i++){
 		if(!memcmp(packet_array[i], packet, PACKET_SIZE)){
