@@ -18,4 +18,4 @@ This should only be used for educational purposes.<br>
 <br>
 <b>Props to:</b><br>
 -This guy for reverse engineering clickers and making the information public -  (http://travisgoodspeed.blogspot.com/2010/07/reversing-rf-clicker.html)<br>
--This guy for dumbing the above post down - (http://www.taylorkillian.com/2012/11/turning-point-clicker-emulation-with.html)
+-This guy for providing a tl;dr of the above post and providing functions to setup and communicate with nRF24L01 - (http://www.taylorkillian.com/2012/11/turning-point-clicker-emulation-with.html)
