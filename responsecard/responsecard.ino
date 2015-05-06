@@ -137,20 +137,18 @@ void print_answers(uint16_t *answers){
   	Serial.print("\n");
 }
 
-/* --- */
+/* --- Code below is adapted from Taylor Killian --- */
 
 /* Read status of R_REGISTERS */
 void read_registers(){
  	uint8_t buffer[10];
- 	int tmp;
     
  	Serial.print("Registers: \n");
  	for(uint8_t i = 0; i < 10; i++){
 		rf24_read(R_REGISTER | i, buffer, 1);
 		Serial.print(i, HEX);
 		Serial.print(",");
-		tmp = buffer[0];
-		Serial.println(tmp, BIN);
+		Serial.println(buffer[0], BIN);
 	}
 }
 
@@ -162,7 +160,7 @@ void init_rx(){
 	delay(5);                                   //Wait for rf24 to power up
 	rf24_write(W_REGISTER | CONFIG, 0x3F);      //2-byte CRC, 0 to jam
 	rf24_write(W_REGISTER | EN_RXADDR, 0x01);   //Receive on pipe 1
-	rf24_write(W_REGISTER | RX_PW_P0, 0x04);    //4-byte addr width
+	rf24_write(W_REGISTER | RX_PW_P0, 0x04);    //4-byte packet size
 	rf24_write(CONFIG, 0x00);                   //Unset prim rx for recv
 	rf24_write(W_REGISTER | EN_AA, 0x00);       //Disable auto-ack
 	rf24_write(W_REGISTER | RF_CH, CHANNEL);    //Set channel
@@ -173,67 +171,52 @@ void init_rx(){
 	digitalWrite(CE, HIGH); //Deselect device
 }
 
-/* --- nRF24L01 SPI functions --- */
+/* --- nRF24L01 SPI r/w functions --- */
 
-uint8_t rf24_read(uint8_t cmd, uint8_t* result, uint8_t length){
-	uint8_t status;
-  
+void rf24_read(uint8_t cmd, uint8_t* result, uint8_t length){
 	digitalWrite(CSN, LOW);  //Select device
   
-	status = SPI.transfer(cmd);
+	SPI.transfer(cmd);
 	for(uint8_t i = 0; i < length; i++){
 		result[i] = SPI.transfer(0);
 	}
 
 	digitalWrite(CSN, HIGH); //Deselect device
-	return status;
 }
 
-uint8_t rf24_read(uint8_t cmd, uint8_t result){
-	uint8_t status;
-  
+void rf24_read(uint8_t cmd, uint8_t result){
 	digitalWrite(CSN, LOW);  //Select device
   
-	status = SPI.transfer(cmd);
+	SPI.transfer(cmd);
 	result = SPI.transfer(0);
 
 	digitalWrite(CSN, HIGH); //Deselect device
-	return status;
 }
 
-uint8_t rf24_write(uint8_t cmd, uint8_t* val, uint8_t length){
-	uint8_t status;
-  
+void rf24_write(uint8_t cmd, uint8_t* val, uint8_t length){
 	digitalWrite(CSN, LOW);  //Select device
 
-	status = SPI.transfer(cmd);
+	SPI.transfer(cmd);
 	for(uint8_t i = 0; i < length; i++){
 		SPI.transfer(val[i]);
 	}
 
 	digitalWrite(CSN, HIGH);  //Deselect device
-	return status;
 }
 
-uint8_t rf24_write(uint8_t cmd, uint8_t val){
-	uint8_t status;
-  
+void rf24_write(uint8_t cmd, uint8_t val){
 	digitalWrite(CSN, LOW);  //Select device
   
-	status = SPI.transfer(cmd);
+	SPI.transfer(cmd);
 	SPI.transfer(val);
 
 	digitalWrite(CSN, HIGH);  //Deselect device
-	return status;
 }
 
-uint8_t rf24_write(uint8_t cmd){
-	uint8_t status;
-  
+void rf24_write(uint8_t cmd){
 	digitalWrite(CSN, LOW);  //Select device
   
-	status = SPI.transfer(cmd);
+	SPI.transfer(cmd);
 
 	digitalWrite(CSN, HIGH);  //Deselect device
- 	return status;
 }
