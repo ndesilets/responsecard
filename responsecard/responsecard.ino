@@ -7,8 +7,8 @@
 #define PACKET_SIZE 4
 #define MAX_SIZE 512
 
-uint8_t **packet_array;			//Rows: MAX_SIZE, Cols: PACKET_SIZE
-uint16_t packets_idx = 0;
+uint8_t **packet_array;				//Rows: MAX_SIZE, Cols: PACKET_SIZE
+uint16_t packets_idx = 0;			
 uint8_t raw_packet[PACKET_SIZE];
 
 uint16_t answers[10];
@@ -18,7 +18,7 @@ uint8_t rx_status;
 
 void setup(){
 	/* Setup serial */
-	Serial.begin(9600);		//Baud rate does not matter w/ Teensy 3.1
+	Serial.begin(9600);
   
 	/* Set pins */
 	pinMode(CE, OUTPUT);
@@ -31,7 +31,7 @@ void setup(){
 	SPI.setDataMode(SPI_MODE0);
 	
 	/* Init packet array 
-	 * Dynamic allocation is not a good idea but fuck it yolo */
+	 * Allocating to heap is a bad idea w/ avr but fuck it yolo */
 	packet_array = new uint8_t *[MAX_SIZE];
 	for(uint16_t i = 0; i < MAX_SIZE; i++){
 		packet_array[i] = new uint8_t[PACKET_SIZE];
@@ -41,6 +41,7 @@ void setup(){
 	init_rx(); 
 	delay(1000);
 	read_registers();
+	Serial.print("[BEGIN]\n\n");
 }
 
 void loop(){
@@ -51,24 +52,24 @@ void loop(){
 	if(rx_status < 0x07){
 		/* Get raw packet data */
 		get_packet(raw_packet);
+		//print_packet(raw_packet);
 		
 		/* Check if raw packet is unique */
 		if(packet_unique(packet_array, raw_packet)){
-			/* Display raw packet info + packets_idx */
+			/* Add packet to array + add answer */
 			Serial.println();
 			print_packet(raw_packet);
-			Serial.print("PCK IDX: ");
-			Serial.print(packets_idx);
-			Serial.println();
-			/* Add packet to array + add answer */
 			add_packet(packet_array, raw_packet);
 			add_answer(answers, raw_packet);
 			print_answers(answers);
+			Serial.print("PCK IDX: ");
+			Serial.print(packets_idx);
+			Serial.println();
 		} 
-	}	
+	}
 	
-	/* This delay can probably be removed */
-	delay(10);
+	/* Wait 50ms because reasons */
+	delay(50);
 }
 
 /* Get status of rx pipe */
@@ -83,7 +84,7 @@ void get_packet(uint8_t *packet){
 	rf24_write(FLUSH_RX);
 }
 
-/* Check if packet is unique, return 1 if true, 0 if false */
+/* Check if packet is unique */
 uint8_t packet_unique(uint8_t **packet_array, uint8_t *packet){
 	for(uint16_t i = 0; i < packets_idx; i++){
 		if(!memcmp(packet_array[i], packet, PACKET_SIZE)){
@@ -129,21 +130,21 @@ void add_answer(uint16_t *answers, uint8_t *packet){
 void print_answers(uint16_t *answers){
 	Serial.print("[ANSWERS]\n");
 	for(uint8_t i = 0; i < 10; i++){
-    		Serial.print(i + 1);
-    		Serial.print(":\t");
-    		Serial.print(answers[i]);
-    		Serial.print("\n");
+    	Serial.print(i + 1);
+    	Serial.print(":\t");
+    	Serial.print(answers[i]);
+    	Serial.print("\n");
   	}
   	Serial.print("\n");
 }
 
-/* --- Code below is adapted from Taylor Killian --- */
+/* --- */
 
 /* Read status of R_REGISTERS */
 void read_registers(){
  	uint8_t buffer[10];
     
- 	Serial.print("Registers: \n");
+ 	Serial.print("R_REGISTERS: \n");
  	for(uint8_t i = 0; i < 10; i++){
 		rf24_read(R_REGISTER | i, buffer, 1);
 		Serial.print(i, HEX);
@@ -160,7 +161,7 @@ void init_rx(){
 	delay(5);                                   //Wait for rf24 to power up
 	rf24_write(W_REGISTER | CONFIG, 0x3F);      //2-byte CRC, 0 to jam
 	rf24_write(W_REGISTER | EN_RXADDR, 0x01);   //Receive on pipe 1
-	rf24_write(W_REGISTER | RX_PW_P0, 0x04);    //4-byte packet size
+	rf24_write(W_REGISTER | RX_PW_P0, 0x04);    //4-byte addr width
 	rf24_write(CONFIG, 0x00);                   //Unset prim rx for recv
 	rf24_write(W_REGISTER | EN_AA, 0x00);       //Disable auto-ack
 	rf24_write(W_REGISTER | RF_CH, CHANNEL);    //Set channel
@@ -171,52 +172,67 @@ void init_rx(){
 	digitalWrite(CE, HIGH); //Deselect device
 }
 
-/* --- nRF24L01 SPI r/w functions --- */
+/* --- nRF24L01 SPI functions --- */
 
-void rf24_read(uint8_t cmd, uint8_t* result, uint8_t length){
+uint8_t rf24_read(uint8_t cmd, uint8_t* result, uint8_t length){
+	uint8_t status;
+  
 	digitalWrite(CSN, LOW);  //Select device
   
-	SPI.transfer(cmd);
+	status = SPI.transfer(cmd);
 	for(uint8_t i = 0; i < length; i++){
 		result[i] = SPI.transfer(0);
 	}
 
 	digitalWrite(CSN, HIGH); //Deselect device
+	return status;
 }
 
-void rf24_read(uint8_t cmd, uint8_t result){
+uint8_t rf24_read(uint8_t cmd, uint8_t result){
+	uint8_t status;
+  
 	digitalWrite(CSN, LOW);  //Select device
   
-	SPI.transfer(cmd);
+	status = SPI.transfer(cmd);
 	result = SPI.transfer(0);
 
 	digitalWrite(CSN, HIGH); //Deselect device
+	return status;
 }
 
-void rf24_write(uint8_t cmd, uint8_t* val, uint8_t length){
+uint8_t rf24_write(uint8_t cmd, uint8_t* val, uint8_t length){
+	uint8_t status;
+  
 	digitalWrite(CSN, LOW);  //Select device
 
-	SPI.transfer(cmd);
+	status = SPI.transfer(cmd);
 	for(uint8_t i = 0; i < length; i++){
 		SPI.transfer(val[i]);
 	}
 
 	digitalWrite(CSN, HIGH);  //Deselect device
+	return status;
 }
 
-void rf24_write(uint8_t cmd, uint8_t val){
+uint8_t rf24_write(uint8_t cmd, uint8_t val){
+	uint8_t status;
+  
 	digitalWrite(CSN, LOW);  //Select device
   
-	SPI.transfer(cmd);
+	status = SPI.transfer(cmd);
 	SPI.transfer(val);
 
 	digitalWrite(CSN, HIGH);  //Deselect device
+	return status;
 }
 
-void rf24_write(uint8_t cmd){
+uint8_t rf24_write(uint8_t cmd){
+	uint8_t status;
+  
 	digitalWrite(CSN, LOW);  //Select device
   
-	SPI.transfer(cmd);
+	status = SPI.transfer(cmd);
 
 	digitalWrite(CSN, HIGH);  //Deselect device
+ 	return status;
 }
