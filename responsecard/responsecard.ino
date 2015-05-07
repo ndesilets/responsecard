@@ -3,7 +3,7 @@
 
 #define CE 9
 #define CSN 10
-#define CHANNEL 69
+#define CHANNEL 40
 #define PACKET_SIZE 4
 #define MAX_SIZE 512
 
@@ -40,8 +40,8 @@ void setup(){
 	/* Setup nRF24L01 */
 	init_rx(); 
 	delay(1000);
-	read_registers();
-	Serial.print("[BEGIN]\n\n");
+	//read_registers();
+	Serial.print("[BEGIN]\n");
 }
 
 void loop(){
@@ -56,20 +56,21 @@ void loop(){
 		
 		/* Check if raw packet is unique */
 		if(packet_unique(packet_array, raw_packet)){
-			/* Add packet to array + add answer */
+			/* Print packet details and packet_idx */
 			Serial.println();
 			print_packet(raw_packet);
-			add_packet(packet_array, raw_packet);
-			add_answer(answers, raw_packet);
-			print_answers(answers);
 			Serial.print("PCK IDX: ");
 			Serial.print(packets_idx);
 			Serial.println();
+			/* Add answer MAC addr to list + add answer to list */
+			add_packet(packet_array, raw_packet);
+			add_answer(answers, raw_packet);
+			print_answers(answers);
 		} 
 	}
 	
-	/* Wait 50ms because reasons */
-	delay(50);
+	/* Could probably be removed */
+	delay(5);
 }
 
 /* Get status of rx pipe */
@@ -130,10 +131,10 @@ void add_answer(uint16_t *answers, uint8_t *packet){
 void print_answers(uint16_t *answers){
 	Serial.print("[ANSWERS]\n");
 	for(uint8_t i = 0; i < 10; i++){
-    	Serial.print(i + 1);
-    	Serial.print(":\t");
-    	Serial.print(answers[i]);
-    	Serial.print("\n");
+    		Serial.print(i + 1);
+    		Serial.print(":\t");
+    		Serial.print(answers[i]);
+    		Serial.print("\n");
   	}
   	Serial.print("\n");
 }
