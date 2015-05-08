@@ -10,6 +10,7 @@ Receives answers emitted from all nearby clickers on defined channel. Upon recei
 <b>To-do:</b><br>
 -Transmit answers to master receiver by emulating a clicker (or multiple clickers)<br>
 -Make program interactive (set channel at start, reset list for new question, etc.)<br>
+-Might look into a red/black tree to replace sequential search to see if it is quicker
 <br>
 ---<br>
 <br>
