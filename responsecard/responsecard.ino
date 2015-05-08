@@ -16,6 +16,8 @@ uint8_t answers_idx = 0;
 
 uint8_t rx_status;
 
+uint8_t master_MAC[3] = {0x56, 0x34, 0x12};
+
 void setup(){
 	/* Setup serial */
 	Serial.begin(9600);
@@ -31,7 +33,7 @@ void setup(){
 	SPI.setDataMode(SPI_MODE0);
 	
 	/* Init packet array 
-	 * Allocating to heap is a bad idea w/ avr but fuck it yolo */
+	 * Dynamic allocation isn't a good idea but fuck it yolo */
 	packet_array = new uint8_t *[MAX_SIZE];
 	for(uint16_t i = 0; i < MAX_SIZE; i++){
 		packet_array[i] = new uint8_t[PACKET_SIZE];
@@ -69,7 +71,7 @@ void loop(){
 		} 
 	}
 	
-	/* Could probably be removed */
+	/* Loop at 200 Hz*/
 	delay(5);
 }
 
@@ -98,7 +100,7 @@ uint8_t packet_unique(uint8_t **packet_array, uint8_t *packet){
 
 /* Add packet to packet array */
 void add_packet(uint8_t **packet_array, uint8_t *packet){
-	for(uint16_t i = 0; i < 3; i++){
+	for(uint8_t i = 0; i < 3; i++){
 		packet_array[packets_idx][i] = packet[i];
 	}
 	
@@ -156,21 +158,22 @@ void read_registers(){
 
 /* Init RF24 to receive */
 void init_rx(){
-	digitalWrite(CE, LOW); //Select device
+  digitalWrite(CE, LOW); //Select device
+  rf24_write(W_REGISTER | CONFIG, 0x0A);      //Power on, enable CRC
+  delay(5);
+  rf24_write(W_REGISTER | CONFIG, 0x3F);      //2-byte CRC, 0 to jam
+  rf24_write(W_REGISTER | EN_RXADDR, 0x01);   //Receive on pipe 1
+  rf24_write(W_REGISTER | RX_PW_P0, 0x04);    //4-byte addr width
+  rf24_write(CONFIG, 0x00);                   //Unset prim rx for recv
+  rf24_write(W_REGISTER | EN_AA, 0x00);       //Disable auto-ack
+  rf24_write(W_REGISTER | RF_CH, CHANNEL);        //Set channel
+  rf24_write(W_REGISTER | SETUP_AW, 0x01);    //3-byte MAC addr
+  rf24_write(W_REGISTER | RF_SETUP, 0x06);    //1MBPS data rate, high pwr
   
-	rf24_write(W_REGISTER | CONFIG, 0x0A);      //Power on, enable CRC
-	delay(5);                                   //Wait for rf24 to power up
-	rf24_write(W_REGISTER | CONFIG, 0x3F);      //2-byte CRC, 0 to jam
-	rf24_write(W_REGISTER | EN_RXADDR, 0x01);   //Receive on pipe 1
-	rf24_write(W_REGISTER | RX_PW_P0, 0x04);    //4-byte addr width
-	rf24_write(CONFIG, 0x00);                   //Unset prim rx for recv
-	rf24_write(W_REGISTER | EN_AA, 0x00);       //Disable auto-ack
-	rf24_write(W_REGISTER | RF_CH, CHANNEL);    //Set channel
-	rf24_write(W_REGISTER | SETUP_AW, 0x01);    //3-byte MAC addr
-	rf24_write(W_REGISTER | RF_SETUP, 0x06);    //1MBPS data rate, high pwr
-	rf24_write(FLUSH_RX);                       //Clear receiver buffer
-  
-	digitalWrite(CE, HIGH); //Deselect device
+  rf24_write(FLUSH_RX);                       //Clear receiver buffer
+  rf24_write(W_REGISTER | STATUS, 0x70);      //Clear interrupts
+  rf24_write(W_REGISTER | RX_ADDR_P0, master_MAC, 3);  //Set MAC to listen for
+  digitalWrite(CE, HIGH); //Deselect device
 }
 
 /* --- nRF24L01 SPI functions --- */
